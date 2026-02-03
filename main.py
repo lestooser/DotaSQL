@@ -5,6 +5,8 @@ import sqlconnecter as sqlc  # Модуль для работы с SQL базо�
 from datetime import datetime  # Для работы с датами и временем
 from dotenv import load_dotenv
 import os
+import pandas as pd
+import polars as pl
 
 # Глобальная константа с ID игрока, которую можно изменить для другого игрока
 load_dotenv()
@@ -103,6 +105,7 @@ def get_match_inf(matches):
     # 6 - властелин
     # 7 - божество
     # 8 - титан)
+    results = []
     def keep_only_keys(data, keys_to_keep):
         """Рекурсивно оставляет только указанные ключи"""
         if isinstance(data, dict):
@@ -112,53 +115,65 @@ def get_match_inf(matches):
         return data
     
     # Ваш список URL для запросов
-    urls = []
+
     for match in matches[:2]:
         if 'match_id' in match:
             match_id = match["match_id"]
             print(f"\nОбрабатываем матч ID: {match_id}")
-            urls.append(f"https://api.opendota.com/api/matches/{match_id}")
+            url = (f"https://api.opendota.com/api/matches/{match_id}")
+
     
-    if not urls:
-        print("Нет доступных match_id")
-        return []
-    
-    headers = {"Accept": "application/json"}
-    all_results = []
-    
-    # Обрабатываем каждый URL
-    for url in urls:
+        headers = {"Accept": "application/json"}
+        
+        # Обрабатываем каждый URL
         try:
             print(f"Запрашиваем: {url}")
             response = requests.get(url, headers=headers, timeout=10)
-            
+                
             if response.status_code != 200:
                 print(f"Ошибка {response.status_code} для URL: {url}")
+                if response.status_code == 429:
+                    print("   Превышен лимит запросов!")
+                elif response.status_code == 404:
+                    print("   Матч не найден!")
                 continue
-            
-            # Получаем JSON данные
+
+                
+                # Получаем JSON данные
             data = response.json()
-            
-            # Ключи, которые нужно оставить
-            keys_to_keep = [
-                "match_id",  # Добавим match_id, если он нужен
-                "account_id", "hero_id", "picks_bans", "benchmarks",
-                "ability_upgrades_arr", "rank_tier", 
-                "item_0", "item_1", "item_2", "item_3", "item_4", "item_5"
-            ]
-            
-            # Фильтруем данные
-            filtered_data = keep_only_keys(data, keys_to_keep)
-            
-            # Добавляем в результаты
-            all_results.append(filtered_data)
-            
+                
+                # Фильтруем данные
+                
+            if "players" in data and data["players"]:
+                for player in data['players']:
+                    print("ТЕКУЩИЙ ИГРОК --------- " , player.get('account_id'), "\n\n")
+                    result = {
+                            "match_id": data.get("match_id"),
+                            "account_id": player.get("account_id"),
+                            "hero_id": player.get("hero_id"), 
+                            "picks_bans": data.get("picks_bans"), 
+                            "benchmarks": player.get("benchmarks"),
+                            "ability_upgrades_arr": player.get ("ability_upgrades_arr"), 
+                            "rank_tier": player.get("rank_tier"), 
+                            "item_0": player.get("item_0"), 
+                            "item_1": player.get("item_1"), 
+                            "item_2": player.get("item_2"), 
+                            "item_3": player.get("item_3"), 
+                            "item_4": player.get("item_4"), 
+                            "item_5": player.get("item_5")
+                        }
+                    results.append(result)
+                        # filtered_data = keep_only_keys(data, keys_to_keep)
+                    
+                # Добавляем в результаты
+                # all_results.append(filtered_data)
+                
         except requests.exceptions.RequestException as e:
             print(f"Ошибка запроса: {e}")
         except json.JSONDecodeError as e:
             print(f"Ошибка парсинга JSON: {e}")
     
-    return all_results
+    return results
     
 
 
@@ -226,9 +241,15 @@ if __name__ == "__main__":
             print(f"Error fetching matches: {e}")
     try:        
         games = get_match_inf(matches)
-        print(json.dumps(games, indent=2))
     except Exception as e:
         print(f"Error fetch games: {e}")
+        
+    df = pd.DataFrame(games)
+    df.fillna(0, inplace=True)
+    print(f"DataFrame создан: {df.shape[0]} строк, {df.shape[1]} колонок")
+         
+    # df = pd.read_json(games_new, orient='records')    
+    # print(df)
     # types_dict = formating_for_sql(matches)
 
     # try:
