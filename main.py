@@ -77,44 +77,174 @@ def del_column(matches):
         if 'party_size' in match:
             del match['party_size']
 
-def get_match_inf(match_id: int):
-    pass
+def get_match_inf(matches: int):
+    import requests
+
+def get_match_inf(matches):
+    """Получает информацию о матчах из OpenDota API"""
+    #Из всей информации нужно получить строки: match_id (bigint), 
+    # account_id (bigint), 
+    # hero_id (int), 
+    # picks_bans(list), 
+    # benchmarks(list), 
+    # ability_upgrades_arr(list) 
+    # "item_0": 180,
+    #   "item_1": 254,
+    #   "item_2": 232,
+    #   "item_3": 1802,
+    #   "item_4": 108,
+    #   "item_5": 1107
+    # rank_tier (1 цифра - ранг, 2 - звезды. 
+    # 1 - рекрут
+    # 2 - страж
+    # 3 - рыцарь
+    # 4 - герой
+    # 5 - легенда 
+    # 6 - властелин
+    # 7 - божество
+    # 8 - титан)
+    def keep_only_keys(data, keys_to_keep):
+        """Рекурсивно оставляет только указанные ключи"""
+        if isinstance(data, dict):
+            return {k: v for k, v in data.items() if k in keys_to_keep}
+        elif isinstance(data, list):
+            return [keep_only_keys(item, keys_to_keep) for item in data]
+        return data
+    
+    # Ваш список URL для запросов
+    urls = []
+    for match in matches[:2]:
+        if 'match_id' in match:
+            match_id = match["match_id"]
+            print(f"\nОбрабатываем матч ID: {match_id}")
+            urls.append(f"https://api.opendota.com/api/matches/{match_id}")
+    
+    if not urls:
+        print("Нет доступных match_id")
+        return []
+    
+    headers = {"Accept": "application/json"}
+    all_results = []
+    
+    # Обрабатываем каждый URL
+    for url in urls:
+        try:
+            print(f"Запрашиваем: {url}")
+            response = requests.get(url, headers=headers, timeout=10)
+            
+            if response.status_code != 200:
+                print(f"Ошибка {response.status_code} для URL: {url}")
+                continue
+            
+            # Получаем JSON данные
+            data = response.json()
+            
+            # Ключи, которые нужно оставить
+            keys_to_keep = [
+                "match_id",  # Добавим match_id, если он нужен
+                "account_id", "hero_id", "picks_bans", "benchmarks",
+                "ability_upgrades_arr", "rank_tier", 
+                "item_0", "item_1", "item_2", "item_3", "item_4", "item_5"
+            ]
+            
+            # Фильтруем данные
+            filtered_data = keep_only_keys(data, keys_to_keep)
+            
+            # Добавляем в результаты
+            all_results.append(filtered_data)
+            
+        except requests.exceptions.RequestException as e:
+            print(f"Ошибка запроса: {e}")
+        except json.JSONDecodeError as e:
+            print(f"Ошибка парсинга JSON: {e}")
+    
+    return all_results
+    
 
 
+def formating_for_sql(matches):
+    """
+    Функция преобразовывает колонки из json файла в dict для SQL, по которому строится запрос
+    Аргументы:
+    matches (list): Список словарей матчей.
 
+    Возвращает:
+    types_dict: Словарь, в котором есть все столбцы и их типы.
+    """
+    if not matches:
+        raise (f"Данные для обработки не могут быть пустыми")
+        
+    first_item = matches[0]
+    schema = {}
+    
+    #Составляем словарь ключ-тип
+    for match in first_item:
+        types_dict = {key: type(value).__name__ for key,value in match.items()}
+    
+    #форматируем получившиеся типы
+    for key, value in types_dict.items():
+        #если элемент является списком
+        if isinstance(value, list):
+            if value:
+                #Определить уровеьн вложенности списков
+                def get_list_depth(lst):
+                    depth = 0
+                    current = lst
+                    while (isinstance(current, list) and current):
+                        depth += 1
+                        current = current[0]
+                    return depth
+                depth = get_list_depth(value)
+                
+                if depth == 1:
+                    #Простой список
+                    elem_type = type(value[0]).__name__
+                    match elem_type:
+                        case 'str': types_dict[key] == "TEXT[]"
+                        case 'int': types_dict[key] == "INTEGER[]"
+                        case 'float': types_dict[key] == "FLOAT[]"
+                        case _: types_dict[key] = "JSONB"
+                else:  types_dict[key] = "JSONB"
+                
+        elif value == "str": types_dict[key]="TEXT"
+        elif value == "dict": types_dict[key] == "JSONB"
+        
+    return types_dict
 # Основной блок, который выполняется только при запуске этого файла напрямую (не при импорте)
 if __name__ == "__main__":
+    # arr = [1, 4, [45,6,4,2,34], ["ge","few", "fe"], "wer", True]
+    # for i in arr: print(type(i))
+    
     # print(f"{PLAYER_ID}")
     try:
         matches = fetch_match(PLAYER_ID) 
         matches_formating(matches)
         del_column(matches)
         
-        print(json.dumps(matches[:5], indent=2))
+        # print(json.dumps(matches[:5], indent=2))
     except Exception as e: 
             print(f"Error fetching matches: {e}")
-
-    # print(json.dumps(matches[:5], indent=2))
-    for match in matches[:1]:
-        types_dict = {key: type(value).__name__ for key,value in match.items()}
-    for key, value in types_dict.items():
-        if value == "str": types_dict[key]="TEXT"            
-    # print (types_dict)
-    
-    try:
-        sqlc.create_table_with_name(table="onegame", column=types_dict)
+    try:        
+        games = get_match_inf(matches)
+        print(json.dumps(games, indent=2))
     except Exception as e:
-        print(f"Error creation table with name: {e}" )
+        print(f"Error fetch games: {e}")
+    # types_dict = formating_for_sql(matches)
+
+    # try:
+    #     sqlc.create_table_with_name(table="onegame", column=types_dict)
+    # except Exception as e:
+    #     print(f"Error creation table with name: {e}" )
       
       
-    try: 
-        sqlc.create_table()
-    except Exception as e:
-        print(f"Error creating table: {e}")
+    # try: 
+    #     sqlc.create_table()
+    # except Exception as e:
+    #     print(f"Error creating table: {e}")
 
-    try:
-        # Вставляем данные матчей в базу данных
-        sqlc.INSERT_MATCHES(matches)
-    except Exception as e:
-        print(f"Error inserting matches: {e}")
+    # try:
+    #     # Вставляем данные матчей в базу данных
+    #     sqlc.INSERT_MATCHES(matches)
+    # except Exception as e:
+    #     print(f"Error inserting matches: {e}")
 
