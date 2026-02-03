@@ -6,12 +6,15 @@ from dotenv import load_dotenv
 load_dotenv()
 
 DB_CONFIG = {
-    'host': 'localhost',
-    'port': 5432,
-    'database': 'DotaStat',
-    'user': 'postgres',
-    'password': '91B44m9144'
+    "host": os.getenv('DB_HOST'),
+    "port": os.getenv('DB_PORT'),
+    "database": os.getenv('DB_NAME'),
+    "user": os.getenv('DB_USER'),
+    "password": os.getenv('DB_PASSWORD')
+    
 }
+
+
 
 def Decorator_connect_db(func):
     def wrapper(*args, **kwargs):
@@ -72,8 +75,24 @@ def INSERT_MATCHES(cursor, matches):
                 average_rank,
                 leaver_status,
                 party_size,
-                hero_variant	
+                hero_variant
             ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT (match_id) DO UPDATE SET
+                player_slot = EXCLUDED.player_slot,
+                radiant_win = EXCLUDED.radiant_win,
+                duration = EXCLUDED.duration,
+                game_mode = EXCLUDED.game_mode,
+                lobby_type = EXCLUDED.lobby_type,
+                hero_id = EXCLUDED.hero_id,
+                start_time = EXCLUDED.start_time,
+                version = EXCLUDED.version,
+                kills = EXCLUDED.kills,
+                deaths = EXCLUDED.deaths,
+                assists = EXCLUDED.assists,
+                average_rank = EXCLUDED.average_rank,
+                leaver_status = EXCLUDED.leaver_status,
+                party_size = EXCLUDED.party_size,
+                hero_variant = EXCLUDED.hero_variant
         ''', (
                 match.get('match_id'),
                 match.get('player_slot'),
@@ -92,6 +111,10 @@ def INSERT_MATCHES(cursor, matches):
                 match.get('party_size'),
                 match.get('hero_variant')
         ))
-        
-    print('Matches inserted successfully.')
 
+    print('Matches inserted/updated successfully.')
+
+@Decorator_connect_db
+def FETCH_ALL_MATCHES(cursor):
+    cursor.execute('SELECT * FROM matches')
+    return cursor.fetchall()

@@ -3,9 +3,13 @@ import requests  # Для отправки HTTP-запросов
 import json      # Для работы с JSON данными
 import sqlconnecter as sqlc  # Модуль для работы с SQL базой данных
 from datetime import datetime  # Для работы с датами и временем
+from dotenv import load_dotenv
+import os
 
 # Глобальная константа с ID игрока, которую можно изменить для другого игрока
-PLAYER_ID = '327729645'
+load_dotenv()
+
+PLAYER_ID = os.getenv("PLAYER_ID")
 
 def fetch_match(player_id):
     """
