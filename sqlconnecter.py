@@ -55,6 +55,19 @@ def create_table(cursor):
     ''')
     print('Table created successfully.')
 
+
+@Decorator_connect_db
+def create_table_with_name(cursor, table, column:dict):
+    sql_parts_ = []
+    for i, (key, value) in enumerate(column.items()):
+        comma = "" if i == len(column) - 1 else ","
+        sql_parts_.append(f"{key} {value}{comma}")
+        
+    cursor.execute(f'CREATE TABLE IF NOT EXISTS {table} (\n'+ 
+                   '\n'.join(sql_parts_)+"\n);") 
+    print("Values for column in table: ", column)
+    
+
 @Decorator_connect_db
 def INSERT_MATCHES(cursor, matches):
     for match in matches:

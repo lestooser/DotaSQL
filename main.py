@@ -9,7 +9,8 @@ import os
 # Глобальная константа с ID игрока, которую можно изменить для другого игрока
 load_dotenv()
 
-PLAYER_ID = os.getenv("PLAYER_ID")
+PLAYER_ID2 = os.getenv("PLAYER_ID")
+PLAYER_ID ="327729645"
 
 def fetch_match(player_id):
     """
@@ -30,11 +31,11 @@ def fetch_match(player_id):
     headers = {"Accept": "application/json"}
     # Отправляем GET-запрос к API
     response = requests.get(url, headers=headers)
-
     # Проверяем статус ответа: если не 200 (не успех), выбрасываем исключение
     if response.status_code != 200:
         raise Exception(f"API request failed with status code: {response.status_code}")
     # Возвращаем данные ответа в формате JSON
+    
     return response.json()
 
 def format_timestamp(timestamp):
@@ -69,30 +70,51 @@ def matches_formating(matches):
         if 'start_time' in match:
             match['start_time'] = format_timestamp(match['start_time'])
 
+def del_column(matches):
+    for match in matches:
+        if 'version' in match:
+            del match['version']
+        if 'party_size' in match:
+            del match['party_size']
+
+def get_match_inf(match_id: int):
+    pass
+
 
 
 # Основной блок, который выполняется только при запуске этого файла напрямую (не при импорте)
 if __name__ == "__main__":
+    # print(f"{PLAYER_ID}")
+    try:
+        matches = fetch_match(PLAYER_ID) 
+        matches_formating(matches)
+        del_column(matches)
+        
+        print(json.dumps(matches[:5], indent=2))
+    except Exception as e: 
+            print(f"Error fetching matches: {e}")
+
+    # print(json.dumps(matches[:5], indent=2))
+    for match in matches[:1]:
+        types_dict = {key: type(value).__name__ for key,value in match.items()}
+    for key, value in types_dict.items():
+        if value == "str": types_dict[key]="TEXT"            
+    # print (types_dict)
+    
+    try:
+        sqlc.create_table_with_name(table="onegame", column=types_dict)
+    except Exception as e:
+        print(f"Error creation table with name: {e}" )
+      
+      
     try: 
         sqlc.create_table()
     except Exception as e:
         print(f"Error creating table: {e}")
-    
-    
 
     try:
-        # Получаем матчи для игрока
-        matches = fetch_match(PLAYER_ID)
-        # Форматируем данные матчей
-        matches_formating(matches)
-        try:
-            # Вставляем данные матчей в базу данных
-            sqlc.INSERT_MATCHES(matches)
-        except Exception as e:
-            print(f"Error inserting matches: {e}")
-        
-        # Выводим первые 5 матчей в формате JSON с отступами для читаемости
-        print(json.dumps(matches[:5], indent=2))
+        # Вставляем данные матчей в базу данных
+        sqlc.INSERT_MATCHES(matches)
     except Exception as e:
-        # В случае ошибки выводим сообщение об ошибке
-        print(f"Error fetching matches: {e}")
+        print(f"Error inserting matches: {e}")
+
