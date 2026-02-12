@@ -127,7 +127,30 @@ def INSERT_MATCHES(cursor, matches):
 
     print('Matches inserted/updated successfully.')
 
+
+@Decorator_connect_db
+def insert_into_db(cursor, table, data:dict):
+    columns = ', '.join(data.keys())
+    placeholders = ', '.join(['%s'] * len(data))
+    values = tuple(data.values())
+    
+    query = f'INSERT INTO {table} ({columns}) VALUES ({placeholders})'
+    cursor.execute(query, values)
+    print(f"Data inserted into {table}: {data}")
+
+
 @Decorator_connect_db
 def FETCH_ALL_MATCHES(cursor):
     cursor.execute('SELECT * FROM matches')
     return cursor.fetchall()
+
+#переписать кортеж в датафрейм
+@Decorator_connect_db
+def get_matches_at_dataframe(cursor):
+    cursor.execute('SELECT * FROM matches')
+    rows = cursor.fetchall()
+    columns = [desc[0] for desc in cursor.description]
+    
+    import pandas as pd
+    df = pd.DataFrame(rows, columns=columns)
+    return df

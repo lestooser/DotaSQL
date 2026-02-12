@@ -79,10 +79,8 @@ def del_column(matches):
         if 'party_size' in match:
             del match['party_size']
 
-def get_match_inf(matches: int):
-    import requests
 
-def get_match_inf(matches):
+def get_match_inf(matches, between=[0,100]):
     """Получает информацию о матчах из OpenDota API"""
     #Из всей информации нужно получить строки: match_id (bigint), 
     # account_id (bigint), 
@@ -116,7 +114,7 @@ def get_match_inf(matches):
     
     # Ваш список URL для запросов
 
-    for match in matches[:2]:
+    for match in matches[between[0]:between[1]]:
         if 'match_id' in match:
             match_id = match["match_id"]
             # print(f"\nОбрабатываем матч ID: {match_id}")
@@ -164,7 +162,7 @@ def get_match_inf(matches):
                         }
                     results.append(result)
                         # filtered_data = keep_only_keys(data, keys_to_keep)
-                    
+                
                 # Добавляем в результаты
                 # all_results.append(filtered_data)
                 
@@ -362,40 +360,58 @@ if __name__ == "__main__":
         matches = fetch_match(PLAYER_ID) 
         matches_formating(matches)
         del_column(matches)
-        print(type(matches))
+        # print(type(matches))
         # print(json.dumps(matches[:5], indent=2))
     except Exception as e: 
             print(f"Error fetching matches: {e}")
-    try:        
-        games = get_match_inf(matches)
+            
+    try:
+        games = get_match_inf(matches, between=[0,1])
+        types_dict = formating_for_sql(games)
+        sqlc.create_table_with_name(table="oneOngame", column=types_dict)
+    except Exception as e:
+        print(f"Error creation table with name: {e}" )
+    try:
+        for i in range(0, len(matches), 2):
+            games = []
+            if 'match_id' not in matches[i]:
+                print(f"Match at index {i} is missing 'match_id': {matches[i]}")
+            games = get_match_inf(matches, between=[i,i+1])
+            types_dict = formating_for_sql(games)
+            try:
+                for game in games:
+                    # Подготовка данных для SQL: сериализация JSONB полей
+                    game_for_sql = game.copy()
+                    for key, value in game_for_sql.items():
+                        if key in types_dict and types_dict[key] == "JSONB":
+                            game_for_sql[key] = json.dumps(value)
+                    sqlc.insert_into_db(table="oneOngame", data=game_for_sql)
+            except Exception as e:
+                print(f"Error inserting games: {e}")
+            
+            
     except Exception as e:
         print(f"Error fetch games: {e}")
         
         
-    print(matches[:1])
-    print("\n\n",games[:1])
-    types_dict = formating_for_sql(matches)
-    types_dict2 = formating_for_sql(games)
+    print(json.dumps(matches[:1], indent=2))
+    print("\n\n",json.dumps(games[:1], indent=2))
+    # types_dict = formating_for_sql(matches)
+    
 
-    try:
-        sqlc.create_table_with_name(table="oneOnmatches", column=types_dict)
-    except Exception as e:
-        print(f"Error creation table with name: {e}" )
         
-    try:
-        sqlc.create_table_with_name(table="oneOngame", column=types_dict2)
+ 
+    
+
+    
+    try: 
+        sqlc.create_table()
     except Exception as e:
-        print(f"Error creation table with name 22: {e}" )
-      
-      
-    # try: 
-    #     sqlc.create_table()
-    # except Exception as e:
-    #     print(f"Error creating table: {e}")
+        print(f"Error creating table: {e}")
 
-    # try:
-    #     # Вставляем данные матчей в базу данных
-    #     sqlc.INSERT_MATCHES(matches)
-    # except Exception as e:
-    #     print(f"Error inserting matches: {e}")
-
+    try:
+        # Вставляем данные матчей в базу данных
+        sqlc.INSERT_MATCHES(matches)
+    except Exception as e:
+        print(f"Error inserting matches: {e}")
+                                 
