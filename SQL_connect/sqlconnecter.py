@@ -140,14 +140,20 @@ def insert_into_db(cursor, table, data:dict):
 
 
 @Decorator_connect_db
-def FETCH_ALL_MATCHES(cursor):
-    cursor.execute('SELECT * FROM matches')
+def FETCH_MATCHES(cursor, limit=None):
+    if limit is not None:
+        cursor.execute('SELECT * FROM matches order by start_time DESC LIMIT %s', (limit,))
+    else:
+        cursor.execute('SELECT * FROM matches')
     return cursor.fetchall()
 
 #переписать кортеж в датафрейм
 @Decorator_connect_db
-def get_matches_at_dataframe(cursor):
-    cursor.execute('SELECT * FROM matches')
+def get_matches_at_dataframe(cursor, limit=None):
+    if limit is not None:
+        cursor.execute('SELECT * FROM matches order by start_time DESC LIMIT %s', (limit,))
+    else:
+        cursor.execute('SELECT * FROM matches')
     rows = cursor.fetchall()
     columns = [desc[0] for desc in cursor.description]
     

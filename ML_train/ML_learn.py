@@ -7,7 +7,7 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.metrics import classification_report
 
 import pandas as pd
-from sqlconnecter import get_matches_at_dataframe, FETCH_ALL_MATCHES
+from SQL_connect.sqlconnecter import get_matches_at_dataframe, FETCH_ALL_MATCHES
 
 
 from main import fetch_match, matches_formating, del_column, get_match_inf, formating_for_sql, PLAYER_ID
