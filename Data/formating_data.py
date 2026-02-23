@@ -1,12 +1,6 @@
 # Импорт необходимых модулей
-import requests  # Для отправки HTTP-запросов
-import json      # Для работы с JSON данными
 import SQL_connect.sqlconnecter as sqlc  # Модуль для работы с SQL базой данных
 from datetime import datetime  # Для работы с датами и временем
-from dotenv import load_dotenv
-import os
-import pandas as pd
-import polars as pl
 
 
 def format_timestamp(timestamp):

@@ -4,7 +4,6 @@ import Data.formating_data as formating
 import Data.get_data as get_data
 import SQL_connect.table_create as table_create
 
-from datetime import datetime  # Для работы с датами и временем
 from dotenv import load_dotenv
 import os
 import pandas as pd

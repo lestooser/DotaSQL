@@ -1,5 +1,4 @@
 # Импорт необходимых модулей
-import requests  # Для отправки HTTP-запросов
 import json      # Для работы с JSON данными
 
 import SQL_connect.sqlconnecter as sqlc  # Модуль для работы с SQL базой данных

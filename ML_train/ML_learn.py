@@ -11,7 +11,6 @@ from SQL_connect.sqlconnecter import get_matches_at_dataframe, FETCH_ALL_MATCHES
 
 
 from main import fetch_match, matches_formating, del_column, get_match_inf, formating_for_sql, PLAYER_ID
-import json
 
 
 def train_model(df):
